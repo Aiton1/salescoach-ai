@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings
-from functools import lru_cache
 import json
 
 
@@ -22,21 +21,32 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = ""
 
-    # CORS
-    CORS_ORIGINS: str = '["http://localhost:3000"]'
+    # CORS - accepts JSON array string or comma-separated string
+    CORS_ORIGINS: str = "*"
 
     @property
     def cors_origins_list(self) -> list[str]:
+        raw = self.CORS_ORIGINS.strip()
+        if not raw or raw == "*":
+            return ["*"]
         try:
-            return json.loads(self.CORS_ORIGINS)
+            parsed = json.loads(raw)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return parsed
         except (json.JSONDecodeError, TypeError):
-            return ["http://localhost:3000"]
+            pass
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     class Config:
         env_file = ".env"
         case_sensitive = True
 
 
-@lru_cache()
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
