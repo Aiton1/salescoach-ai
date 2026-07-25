@@ -17,6 +17,24 @@ from app.schemas.schemas import (
 router = APIRouter()
 
 
+def _normalize_corrections(value) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+
+    normalized = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        normalized.append({
+            "issue": str(item.get("issue") or "Aspecto a mejorar"),
+            "evidence": str(item.get("evidence") or "") or None,
+            "tactic": str(item.get("tactic") or "Aplicar una pregunta de descubrimiento antes de responder."),
+            "ideal_response": str(item.get("ideal_response") or "¿Puedes contarme un poco más sobre esa preocupación?"),
+            "why_it_works": str(item.get("why_it_works") or "Aclara la necesidad del cliente antes de proponer una solución."),
+        })
+    return normalized
+
+
 def _get_supabase():
     from supabase import create_client
     from app.core.config import get_settings
@@ -106,7 +124,7 @@ def _insert_analysis(call_id: str, transcription: str, analysis_data: dict):
         "objections": analysis_data.get("objections", []),
         "techniques_used": analysis_data.get("techniques_used", []),
          "recommendations": analysis_data.get("recommendations", []),
-         "corrections": analysis_data.get("corrections", []),
+         "corrections": _normalize_corrections(analysis_data.get("corrections", [])),
          "next_steps": analysis_data.get("next_steps", []),
         "timeline": analysis_data.get("timeline", []),
         "seller_behavior": analysis_data.get("seller_behavior", []),
@@ -330,4 +348,5 @@ async def get_analysis(call_id: str):
     rows = result.data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Analysis not found")
+    rows[0]["corrections"] = _normalize_corrections(rows[0].get("corrections", []))
     return AnalysisResponse(**rows[0])
