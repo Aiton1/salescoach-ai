@@ -57,6 +57,8 @@ class CallResponse(CallBase):
     audio_url: Optional[str] = None
     duration_seconds: Optional[int] = 0
     status: str
+    progress: int = 0
+    progress_text: str = ""
     created_at: datetime
 
     class Config:

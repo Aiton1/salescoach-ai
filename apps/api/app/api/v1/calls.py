@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from datetime import datetime
 import uuid
 import json
@@ -98,47 +98,29 @@ Transcripcion:
     return json.loads(content)
 
 
-@router.get("/dashboard/stats", response_model=DashboardStats)
-async def get_dashboard_stats():
-    all_calls = list(calls_db.values())
-    return DashboardStats(
-        calls_today=len([c for c in all_calls if c["created_at"].date() == datetime.utcnow().date()]),
-        calls_this_week=len(all_calls),
-        average_score=0,
-        score_trend=0,
-        weekly_goal={
-            "calls_target": 25,
-            "calls_completed": len(all_calls),
-            "quality_target": 80,
-            "quality_average": 0,
-        },
-        recent_calls=[CallResponse(**c) for c in all_calls[:5]],
-    )
-
-
-@router.post("/calls/upload", response_model=CallResponse)
-async def upload_call(
-    audio: UploadFile = File(...),
-    client_name: str = None,
-):
-    call_id = str(uuid.uuid4())
-    audio_bytes = await audio.read()
-
-    call = {
-        "id": call_id,
-        "user_id": "demo-user",
-        "title": audio.filename or "Llamada sin titulo",
-        "client_name": client_name or "Sin cliente",
-        "audio_url": None,
-        "duration_seconds": 0,
-        "status": "processing",
-        "created_at": datetime.utcnow(),
-    }
-    calls_db[call_id] = call
+async def _process_call(call_id: str, audio_bytes: bytes, filename: str):
+    call = calls_db.get(call_id)
+    if not call:
+        return
 
     try:
-        transcription = await _transcribe(audio_bytes, audio.filename or "audio.mp3")
+        # Stage 1: Transcribing
+        call["status"] = "transcribing"
+        call["progress"] = 20
+        call["progress_text"] = "Transcribiendo audio con Whisper..."
+
+        transcription = await _transcribe(audio_bytes, filename)
+
+        # Stage 2: Analyzing
+        call["status"] = "analyzing"
+        call["progress"] = 60
+        call["progress_text"] = "Analizando conversacion con IA..."
+
         analysis_data = await _analyze(transcription)
+
+        # Stage 3: Building results
+        call["progress"] = 90
+        call["progress_text"] = "Generando reporte..."
 
         analysis = {
             "id": str(uuid.uuid4()),
@@ -159,10 +141,58 @@ async def upload_call(
 
         analyses_db[call_id] = analysis
         call["status"] = "completed"
+        call["progress"] = 100
+        call["progress_text"] = "Analisis completado"
 
     except Exception as e:
         traceback.print_exc()
         call["status"] = "error"
+        call["progress"] = 0
+        call["progress_text"] = f"Error: {str(e)}"
+
+
+@router.get("/dashboard/stats", response_model=DashboardStats)
+async def get_dashboard_stats():
+    all_calls = list(calls_db.values())
+    return DashboardStats(
+        calls_today=len([c for c in all_calls if c["created_at"].date() == datetime.utcnow().date()]),
+        calls_this_week=len(all_calls),
+        average_score=0,
+        score_trend=0,
+        weekly_goal={
+            "calls_target": 25,
+            "calls_completed": len(all_calls),
+            "quality_target": 80,
+            "quality_average": 0,
+        },
+        recent_calls=[CallResponse(**c) for c in all_calls[:5]],
+    )
+
+
+@router.post("/calls/upload", response_model=CallResponse)
+async def upload_call(
+    background_tasks: BackgroundTasks,
+    audio: UploadFile = File(...),
+    client_name: str = None,
+):
+    call_id = str(uuid.uuid4())
+    audio_bytes = await audio.read()
+
+    call = {
+        "id": call_id,
+        "user_id": "demo-user",
+        "title": audio.filename or "Llamada sin titulo",
+        "client_name": client_name or "Sin cliente",
+        "audio_url": None,
+        "duration_seconds": 0,
+        "status": "uploading",
+        "progress": 10,
+        "progress_text": "Audio recibido, iniciando procesamiento...",
+        "created_at": datetime.utcnow(),
+    }
+    calls_db[call_id] = call
+
+    background_tasks.add_task(_process_call, call_id, audio_bytes, audio.filename or "audio.mp3")
 
     return CallResponse(**call)
 
