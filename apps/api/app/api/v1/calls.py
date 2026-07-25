@@ -56,7 +56,7 @@ async def _analyze(transcription: str) -> dict:
             },
             {
                 "role": "user",
-                "content": prompt.format(transcription=transcription),
+                "content": prompt,
             },
         ],
         temperature=0.3,
