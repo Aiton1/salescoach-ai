@@ -96,6 +96,10 @@ async def _process_call(call_id: str, audio_bytes: bytes, filename: str):
 
         transcription = await _transcribe(audio_bytes, filename)
 
+        max_chars = 6000
+        if len(transcription) > max_chars:
+            transcription = transcription[:max_chars] + "\n\n[Transcripcion truncada por limite de tokens]"
+
         # Stage 2: Analyzing
         call["status"] = "analyzing"
         call["progress"] = 60
