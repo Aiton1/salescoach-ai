@@ -1,0 +1,170 @@
+===========================================================
+   SAESCOACH AI - GUIA DE DESPLIEGUE GRATUITO
+   Vercel (Frontend) + Render (Backend) + Supabase (DB)
+===========================================================
+
+REQUISITOS PREVIOS:
+- Cuenta en GitHub (gratis): github.com
+- Cuenta en Vercel (gratis): vercel.com
+- Cuenta en Render (gratis): render.com
+- Git instalado en tu PC
+
+===========================================================
+PASO 1: SUBIR EL CODIGO A GITHUB
+===========================================================
+
+1. Abre PowerShell y ve a la carpeta del proyecto:
+   cd "D:\proyectos portafolio\COASHSALESIA"
+
+2. Inicializar git:
+   git init
+
+3. Crear el archivo .gitignore (ya creado automaticamente)
+
+4. Agregar todo:
+   git add .
+
+5. Hacer el primer commit:
+   git commit -m "feat: SalesCoach AI - initial commit"
+
+6. Ve a github.com y crea un nuevo repositorio:
+   - Nombre: salescoach-ai
+   - Publico o privado (tu decides)
+   - NO marque "Add a README" (ya tenemos uno)
+
+7. Conectar el repo local con GitHub:
+   git remote add origin https://github.com/TU_USUARIO/salescoach-ai.git
+   git branch -M main
+   git push -u origin main
+
+===========================================================
+PASO 2: DEPLOY DEL BACKEND EN RENDER
+===========================================================
+
+1. Ve a render.com y crea cuenta (con GitHub)
+
+2. Click "New +" -> "Web Service"
+
+3. Conecta tu repositorio "salescoach-ai"
+
+4. Configura:
+   - Name: salescoach-api
+   - Region: Oregon (US West) - el mas cercano
+   - Branch: main
+   - Runtime: Python
+   - Build Command:
+     pip install -r requirements.txt
+   - Start Command:
+     uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+5. En "Advanced" -> "Environment Variables" agrega estas:
+
+   OPENAI_API_KEY = tu_groq_api_key_aqui
+   OPENAI_BASE_URL = https://api.groq.com/openai/v1
+   OPENAI_MODEL = llama-3.3-70b-versatile
+   WHISPER_MODEL = whisper-large-v3
+   SUPABASE_URL = https://izjjmaxrnouisbnyxxeg.supabase.co
+   SUPABASE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6amptYXhybm91aXNibnl4eGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDM3MTYsImV4cCI6MjEwMDUxOTcxNn0.rMHj-5oAcFdTuoc3zmITQU5CvOySlUBNDpp8T9zHenY
+   CORS_ORIGINS = ["https://TU_PROYECTO.vercel.app"]
+   PYTHON_VERSION = 3.12
+
+   IMPORTANTE: Cambia "TU_PROYECTO.vercel.app" por la URL real que te de Vercel (Paso 3).
+   Si aun no la tienes, deja el placeholder y lo actualizas despues.
+
+6. Click "Create Web Service"
+
+7. Espera a que termine de construir (2-3 minutos)
+
+8. Anota la URL que te da Render, algo como:
+   https://salescoach-ai-pspy.onrender.com
+
+9. Prueba que funcione abriendo esa URL en el navegador.
+   Deberia ver: {"name":"SalesCoach AI API","version":"0.1.0","status":"running"}
+
+===========================================================
+PASO 3: DEPLOY DEL FRONTEND EN VERCEL
+===========================================================
+
+1. Ve a vercel.com y crea cuenta (con GitHub)
+
+2. Click "Add New..." -> "Project"
+
+3. Importa tu repositorio "salescoach-ai"
+
+4. CONFIGURACION IMPORTANTE:
+   - Framework Preset: Next.js
+   - Root Directory: apps/web  (LEER: click en "Edit" al lado de Root Directory)
+   - Build Command: cd ../.. && npm i -g pnpm && pnpm install && cd apps/web && pnpm build
+   - Install Command: (dejar vacio)
+   - Output Directory: .next
+
+5. En "Environment Variables" agrega estas:
+
+   NEXT_PUBLIC_SUPABASE_URL = https://izjjmaxrnouisbnyxxeg.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6amptYXhybm91aXNibnl4eGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDM3MTYsImV4cCI6MjEwMDUxOTcxNn0.rMHj-5oAcFdTuoc3zmITQU5CvOySlUBNDpp8T9zHenY
+   NEXT_PUBLIC_API_URL = https://salescoach-api.onrender.com
+
+   IMPORTANTE: Cambia "salescoach-api.onrender.com" por la URL real de tu backend en Render (Paso 2).
+
+6. Click "Deploy"
+
+7. Espera a que termine (2-3 minutos)
+
+8. Veras la URL de tu frontend, algo como:
+   https://salescoach-ai-tu-usuario.vercel.app
+
+===========================================================
+PASO 4: ACTUALIZAR CORS EN RENDER
+===========================================================
+
+Si no lo hiciste en el Paso 2, ahora actualiza CORS_ORIGINS en Render:
+
+1. Ve a render.com -> tu servicio "salescoach-api"
+
+2. Click en "Environment" (pestaña arriba)
+
+3. Busca CORS_ORIGINS y editalo con la URL exacta de Vercel:
+   ["https://salescoach-ai-tu-usuario.vercel.app"]
+
+4. Click "Save Changes" - Render hara redeploy automatico
+
+===========================================================
+PASO 5: VERIFICAR QUE TODO FUNCIONE
+===========================================================
+
+1. Abre tu URL de Vercel en el navegador
+
+2. Deberia ver la pagina de Login
+
+3. Registra un usuario nuevo (se crea en Supabase)
+
+4. Inicia sesion
+
+5. Sube un archivo de audio de prueba (MP3 o WAV)
+
+6. Verifica que el Coach IA responda
+
+SI ALGO NO FUNCIONA:
+- Abre la consola del navegador (F12) y mira los errores
+- Si dice "Failed to fetch": el backend no esta corriendo o CORS mal configurado
+- Si ves errores de Supabase: verifica las env vars
+
+===========================================================
+NOTAS IMPORTANTES
+===========================================================
+
+1. RENDER SE DUERME: El backend en Render Free se apaga despues de 15 minutos
+   sin trafico. La primera peticion despues de dormir tarda 30-60 segundos.
+   Esto es normal en el plan gratuito.
+
+2. VARIABLES DE ENTorno: NUNCA subas las API keys al codigo fuente.
+   Siempre van en las env vars de Vercel y Render.
+
+3. ACTUALIZACIONES: Cada vez que hagas git push a main:
+   - Vercel redespliega el frontend automaticamente
+   - Render redespliega el backend automaticamente
+
+4. PERSONALIZAR DOMINIO: En Vercel puedes agregar un dominio custom
+   gratis (ej: salescoach.app) desde Project Settings -> Domains.
+
+===========================================================

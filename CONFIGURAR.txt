@@ -1,0 +1,89 @@
+========================================
+  SALES COACH AI - GUÍA DE CONFIGURACIÓN
+========================================
+
+PASO 1: SUPABASE (Base de datos + Auth)
+----------------------------------------
+1. Ve a https://supabase.com
+2. Crea una cuenta gratuita
+3. Crea un nuevo proyecto:
+   - Nombre: salescoach
+   - Contraseña: (la que quieras, guárdala)
+4. Ve a "SQL Editor" en el menú lateral
+5. Pega TODO el contenido del archivo:
+   supabase/migrations/001_initial_schema.sql
+6. Dale click en "Run" para ejecutar
+7. Ve a "Settings" → "API" (en el menú lateral)
+8. Copia estos 2 valores:
+
+   Project URL (se ve así):
+   https://xxxxxxxx.supabase.co
+
+   anon public key (se ve así):
+   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
+
+
+PASO 2: OPENAI (Inteligencia Artificial)
+------------------------------------------
+1. Ve a https://platform.openai.com
+2. Crea una cuenta
+3. Ve a "API Keys" en el menú
+4. Click en "Create new secret key"
+5. Ponle nombre: salescoach
+6. Copia la key (empieza con: sk-...)
+7. Ve a "Billing" → Agrega mínimo $5 de créditos
+   (necesario para que Whisper y GPT-4 funcionen)
+
+
+PASO 3: PEGAR LAS CREDENCIALES
+---------------------------------
+Abre el archivo: apps/web/.env.local
+
+Reemplaza las 2 líneas con tus valores:
+
+NEXT_PUBLIC_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=TU-ANON-KEY-AQUI
+
+
+PASO 4: BACKEND API (opcional, para funcionalidad completa)
+-------------------------------------------------------------
+Abre terminal en la carpeta del proyecto y ejecuta:
+
+   cd apps/api
+   pip install -r requirements.txt
+
+Luego abre el archivo apps/api/.env y pon:
+
+SUPABASE_URL=https://TU-PROYECTO.supabase.co
+SUPABASE_KEY=TU-ANON-KEY-AQUI
+OPENAI_API_KEY=sk-TU-KEY-AQUI
+
+
+PASO 5: VERIFICAR QUE FUNCIONA
+---------------------------------
+Abre http://localhost:3000 en tu navegador
+
+Deberías ver:
+- Dashboard con gráficas y estadísticas
+- Puedes navegar a todas las pantallas
+- Login y Register funcionan con Supabase
+
+
+ARCHIVOS IMPORTANTES:
+=====================
+- apps/web/.env.local         → Credenciales del frontend
+- apps/api/.env               → Credenciales del backend
+- supabase/migrations/        → Schema de la base de datos
+- apps/web/src/lib/mock-data.ts → Datos de prueba (puedes editarlos)
+
+
+SI ALGO NO FUNCIONA:
+====================
+1. Verifica que las credenciales estén bien copiadas
+2. Asegúrate que el SQL se ejecutó sin errores en Supabase
+3. Reinicia el servidor: cd apps/web && pnpm dev
+
+
+========================================
+  ¡LISTO! Ya tienes tu coach de ventas con IA
+========================================
