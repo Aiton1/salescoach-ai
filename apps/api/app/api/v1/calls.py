@@ -42,40 +42,10 @@ async def _analyze(transcription: str) -> dict:
         base_url=settings.OPENAI_BASE_URL,
     )
 
-    prompt = """Eres un experto en analisis de llamadas de ventas. Analiza la siguiente transcripcion y devuelve un JSON con esta estructura EXACTA:
-
-{
-  "summary": "Resumen detallado de la llamada (2-3 oraciones)",
-  "overall_score": 75,
-  "closing_probability": 45,
-  "strengths": ["fortaleza 1", "fortaleza 2"],
-  "errors": ["error 1", "error 2"],
-  "objections": [
-    {
-      "text": "objecion del cliente",
-      "response": "respuesta del vendedor",
-      "handled_well": false
-    }
-  ],
-  "techniques_used": ["tecnica 1", "tecnica 2"],
-  "recommendations": ["recomendacion 1", "recomendacion 2"],
-  "next_steps": ["paso 1", "paso 2"],
-  "timeline": [
-    {
-      "id": "1",
-      "type": "start",
-      "label": "Inicio",
-      "timestamp_seconds": 0,
-      "is_highlight": false
-    }
-  ]
-}
-
-Tipos de timeline: start, rapport, interest, objection, error, closing, end
-Scores: 0-100
-
-Transcripcion:
-{transcription}"""
+    prompt = "Eres un experto en analisis de llamadas de ventas. Analiza la siguiente transcripcion y devuelve un JSON con esta estructura EXACTA:\n\n"
+    prompt += '{"summary": "Resumen detallado (2-3 oraciones)", "overall_score": 75, "closing_probability": 45, "strengths": ["fortaleza 1"], "errors": ["error 1"], "objections": [{"text": "objecion", "response": "respuesta", "handled_well": false}], "techniques_used": ["tecnica 1"], "recommendations": ["recomendacion 1"], "next_steps": ["paso 1"], "timeline": [{"id": "1", "type": "start", "label": "Inicio", "timestamp_seconds": 0, "is_highlight": false}]}\n\n'
+    prompt += "Tipos de timeline: start, rapport, interest, objection, error, closing, end\nScores: 0-100\n\nTranscripcion:\n"
+    prompt += transcription
 
     response = await client.chat.completions.create(
         model=settings.OPENAI_MODEL,
