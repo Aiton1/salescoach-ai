@@ -115,6 +115,13 @@ async def _process_call_with_audio(call_id: str, audio_bytes: bytes, filename: s
         return
 
     try:
+        file_size_mb = len(audio_bytes) / (1024 * 1024)
+        if file_size_mb > 25:
+            call["status"] = "error"
+            call["progress"] = 0
+            call["progress_text"] = f"Archivo muy grande ({file_size_mb:.0f}MB). Maximo 25MB para transcripcion. Intenta con modo texto."
+            return
+
         call["status"] = "transcribing"
         call["progress"] = 20
         call["progress_text"] = "Transcribiendo audio con Whisper..."
@@ -123,12 +130,22 @@ async def _process_call_with_audio(call_id: str, audio_bytes: bytes, filename: s
         from app.core.config import get_settings
         settings = get_settings()
 
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp3"
+        content_types = {
+            "mp3": "audio/mpeg", "wav": "audio/wav", "m4a": "audio/mp4",
+            "ogg": "audio/ogg", "webm": "audio/webm", "flac": "audio/flac",
+        }
+        content_type = content_types.get(ext, "audio/mpeg")
+
         url = f"{settings.OPENAI_BASE_URL}/audio/transcriptions"
         async with httpx.AsyncClient() as http_client:
-            files = {"file": (filename, audio_bytes, "audio/mpeg")}
+            files = {"file": (filename, audio_bytes, content_type)}
             data = {"model": settings.WHISPER_MODEL}
             headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
             response = await http_client.post(url, files=files, data=data, headers=headers, timeout=120.0)
+            if response.status_code == 502:
+                await asyncio.sleep(5)
+                response = await http_client.post(url, files=files, data=data, headers=headers, timeout=120.0)
             response.raise_for_status()
             transcription = response.json()["text"]
 
