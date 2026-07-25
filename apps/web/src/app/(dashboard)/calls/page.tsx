@@ -21,7 +21,6 @@ import {
   Eye,
   Mic,
   Brain,
-  FileText,
   Sparkles,
   Type,
 } from "lucide-react";
@@ -58,18 +57,18 @@ function CallsPage() {
   const [textInput, setTextInput] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    loadCalls();
-  }, []);
-
-  const loadCalls = async () => {
+  const loadCalls = React.useCallback(async () => {
     try {
       const data = await api.get("/api/v1/calls");
       setCalls(data);
     } catch {
       // Backend not running
     }
-  };
+  }, []);
+
+  React.useEffect(() => {
+    loadCalls();
+  }, [loadCalls]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();

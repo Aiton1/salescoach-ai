@@ -26,7 +26,7 @@ interface Message {
   content: string;
 }
 
-function CoachPage() {
+function CoachContent() {
   const searchParams = useSearchParams();
   const callId = searchParams.get("call_id");
   const [messages, setMessages] = React.useState<Message[]>([]);
@@ -203,4 +203,16 @@ function CoachPage() {
   );
 }
 
-export default CoachPage;
+export default function CoachPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Sparkles className="h-6 w-6 animate-pulse text-emerald-500" />
+        </div>
+      }
+    >
+      <CoachContent />
+    </React.Suspense>
+  );
+}

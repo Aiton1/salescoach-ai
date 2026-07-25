@@ -11,17 +11,12 @@ import {
   cn,
   formatDuration,
   getScoreColor,
-  getScoreBg,
   getProbabilityLabel,
 } from "@/lib/utils";
 import {
   ArrowLeft,
-  Download,
-  Share2,
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -29,17 +24,13 @@ import {
   Target,
   Clock,
   MessageSquare,
-  TrendingUp,
   Zap,
-  ChevronRight,
   Loader2,
   Brain,
   User,
   Smile,
   Frown,
   Meh,
-  ThumbsUp,
-  ThumbsDown,
   Volume2,
   BarChart3,
 } from "lucide-react";
@@ -95,9 +86,25 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const [currentTime, setCurrentTime] = React.useState(0);
   const [expandedTimeline, setExpandedTimeline] = React.useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement>(null);
+  const [duration, setDuration] = React.useState(0);
 
   React.useEffect(() => {
-    loadAnalysis();
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const [analysisData, callData] = await Promise.all([
+          api.get(`/api/v1/analyses/${resolvedParams.id}`),
+          api.get(`/api/v1/calls/${resolvedParams.id}`),
+        ]);
+        if (!cancelled) { setAnalysis(analysisData); setCall(callData); }
+      } catch {
+        if (!cancelled) setError("No se pudo cargar el analisis.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
   }, [resolvedParams.id]);
 
   React.useEffect(() => {
@@ -105,28 +112,16 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
     if (!audio) return;
     const onTime = () => setCurrentTime(audio.currentTime);
     const onEnd = () => setIsPlaying(false);
+    const onLoaded = () => setDuration(audio.duration);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnd);
+    audio.addEventListener("loadedmetadata", onLoaded);
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnd);
+      audio.removeEventListener("loadedmetadata", onLoaded);
     };
   }, [call?.audio_url]);
-
-  const loadAnalysis = async () => {
-    try {
-      const [analysisData, callData] = await Promise.all([
-        api.get(`/api/v1/analyses/${resolvedParams.id}`),
-        api.get(`/api/v1/calls/${resolvedParams.id}`),
-      ]);
-      setAnalysis(analysisData);
-      setCall(callData);
-    } catch {
-      setError("No se pudo cargar el analisis.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -237,12 +232,12 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
                 </Button>
                 <div className="flex-1">
-                  <input type="range" min={0} max={audioRef.current?.duration || 100} value={currentTime}
+                  <input type="range" min={0} max={duration || 100} value={currentTime}
                     onChange={(e) => seekTo(Number(e.target.value))}
                     className="w-full h-1.5 bg-emerald-200 rounded-full appearance-none cursor-pointer accent-emerald-500" />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatDuration(Math.floor(currentTime))}</span>
-                    <span>{formatDuration(Math.floor(audioRef.current?.duration || 0))}</span>
+                    <span>{formatDuration(Math.floor(duration || 0))}</span>
                   </div>
                 </div>
                 <Volume2 className="w-4 h-4 text-slate-400" />

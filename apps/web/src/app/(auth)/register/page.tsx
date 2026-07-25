@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Zap, Mail, Lock, User, ArrowRight, Building, Loader2 } from "lucide-react";
+import { Zap, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 function RegisterPage() {
