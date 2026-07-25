@@ -97,6 +97,14 @@ class ClientSentiment(BaseModel):
     indicator: str
 
 
+class Correction(BaseModel):
+    issue: str
+    evidence: Optional[str] = None
+    tactic: str
+    ideal_response: str
+    why_it_works: str
+
+
 class AnalysisResponse(BaseModel):
     id: str
     call_id: str
@@ -109,6 +117,7 @@ class AnalysisResponse(BaseModel):
     objections: list[Objection] = []
     techniques_used: list[str] = []
     recommendations: list[str] = []
+    corrections: list[Correction] = []
     next_steps: list[str] = []
     timeline: list[TimelineEvent] = []
     seller_behavior: list[SellerBehavior] = []

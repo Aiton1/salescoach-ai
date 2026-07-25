@@ -48,6 +48,13 @@ interface AnalysisData {
   objections: { text: string; response: string; handled_well: boolean; analysis?: string }[];
   techniques_used: string[];
   recommendations: string[];
+  corrections: {
+    issue: string;
+    evidence?: string;
+    tactic: string;
+    ideal_response: string;
+    why_it_works: string;
+  }[];
   next_steps: string[];
   timeline: {
     id: string;
@@ -333,6 +340,51 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
                     {o.analysis && <p className="text-xs text-slate-500 bg-white/50 p-2 rounded-lg">{o.analysis}</p>}
                   </div>
                 ))}</div></CardContent>
+              </Card>
+            )}
+            {analysis.corrections.length > 0 && (
+              <Card className="border-emerald-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-emerald-700">
+                    <Zap className="w-5 h-5" />
+                    Como Mejorarlo en la Próxima Llamada
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analysis.corrections.map((correction, i) => (
+                      <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
+                        <div className="p-4 bg-slate-50">
+                          <div className="flex items-start gap-3">
+                            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-sm font-bold text-emerald-700 flex-shrink-0">
+                              {i + 1}
+                            </span>
+                            <div>
+                              <h4 className="font-semibold text-slate-900">{correction.issue}</h4>
+                              {correction.evidence && (
+                                <p className="text-sm text-slate-500 mt-1 italic">&ldquo;{correction.evidence}&rdquo;</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 mb-1">Táctica</p>
+                            <p className="text-sm text-slate-700">{correction.tactic}</p>
+                          </div>
+                          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-1">Respuesta de un vendedor excelente</p>
+                            <p className="text-sm text-emerald-950 leading-relaxed">&ldquo;{correction.ideal_response}&rdquo;</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Por qué funciona</p>
+                            <p className="text-sm text-slate-600">{correction.why_it_works}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
               </Card>
             )}
             <div className="grid grid-cols-2 gap-6">

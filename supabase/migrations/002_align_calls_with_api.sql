@@ -32,6 +32,7 @@ ALTER TABLE public.calls
   CHECK (status IN ('uploading', 'transcribing', 'analyzing', 'completed', 'error'));
 
 ALTER TABLE public.analyses
+  ADD COLUMN IF NOT EXISTS corrections JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS seller_behavior JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS client_sentiment JSONB NOT NULL DEFAULT '[]'::jsonb;
 

@@ -47,8 +47,9 @@ async def _analyze(transcription: str) -> dict:
         '"overall_score":numero 0-100 sobre la calidad general de la llamada,'
         '"closing_probability":numero 0-100 probabilidad realista de cierre,'
         '"strengths":["Lo que el vendedor hizo bien, con detalle y ejemplos especificos de la conversacion."],'
-        '"errors":["Errores o oportunidades perdidas, explicando por que son errores."],'
-        '"objections":[{"text":"objecion exacta del cliente","response":"respuesta del vendedor","handled_well":true_o_false,"analysis":"Analisis de POR QUE la respuesta fue buena o mala, que podria haber dicho mejor."}],'
+         '"errors":["Errores o oportunidades perdidas, explicando por que son errores."],'
+         '"corrections":[{"issue":"Aspecto concreto a mejorar","evidence":"Frase o momento exacto de la transcripcion que demuestra el problema","tactic":"Tactica de ventas aplicable y como usarla paso a paso","ideal_response":"Respuesta exacta que daria un vendedor excelente, natural y adaptada al contexto","why_it_works":"Por que esta respuesta reduce el riesgo y avanza la conversacion"}],'
+         '"objections":[{"text":"objecion exacta del cliente","response":"respuesta del vendedor","handled_well":true_o_false,"analysis":"Analisis de POR QUE la respuesta fue buena o mala, que podria haber dicho mejor."}],'
         '"techniques_used":["Tecnicas de ventas identificadas (ej: SPIN selling, manejo de objeciones, creacion de urgencia, anchoring). Explicar donde se aplicaron."],'
         '"recommendations":["Recomendaciones accionables y especificas para mejorar."],'
         '"next_steps":["Pasos de seguimiento concretos que el vendedor deberia tomar."],'
@@ -60,6 +61,10 @@ async def _analyze(transcription: str) -> dict:
         "Criterios de evaluacion: Rapport (10 pts), Descubrimiento de necesidades (20 pts), "
         "Presentacion de solucion (20 pts), Manejo de objeciones (20 pts), Cierre (20 pts), "
         "Seguimiento (10 pts). Justifica el overall_score con estos criterios.\n\n"
+        "Para cada correction usa evidencia literal de la transcripcion cuando exista. "
+        "No inventes frases ni momentos. La ideal_response debe sonar natural, ser breve y "
+        "mostrar exactamente como responderia un vendedor excelente en ese contexto. "
+        "Incluye entre 3 y 6 corrections para los errores mas importantes, priorizadas por impacto.\n\n"
         "Transcripcion:\n" + transcription
     )
     prompt = p1 + p2
@@ -100,8 +105,9 @@ def _insert_analysis(call_id: str, transcription: str, analysis_data: dict):
         "errors": analysis_data.get("errors", []),
         "objections": analysis_data.get("objections", []),
         "techniques_used": analysis_data.get("techniques_used", []),
-        "recommendations": analysis_data.get("recommendations", []),
-        "next_steps": analysis_data.get("next_steps", []),
+         "recommendations": analysis_data.get("recommendations", []),
+         "corrections": analysis_data.get("corrections", []),
+         "next_steps": analysis_data.get("next_steps", []),
         "timeline": analysis_data.get("timeline", []),
         "seller_behavior": analysis_data.get("seller_behavior", []),
         "client_sentiment": analysis_data.get("client_sentiment", []),

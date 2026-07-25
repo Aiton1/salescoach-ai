@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS analyses (
   objections JSONB DEFAULT '[]'::jsonb,
   techniques_used JSONB DEFAULT '[]'::jsonb,
   recommendations JSONB DEFAULT '[]'::jsonb,
+  corrections JSONB DEFAULT '[]'::jsonb,
   next_steps JSONB DEFAULT '[]'::jsonb,
   timeline JSONB DEFAULT '[]'::jsonb,
   seller_behavior JSONB DEFAULT '[]'::jsonb,
@@ -49,6 +50,7 @@ ALTER TABLE calls
   ADD COLUMN IF NOT EXISTS progress_text TEXT NOT NULL DEFAULT '';
 
 ALTER TABLE analyses
+  ADD COLUMN IF NOT EXISTS corrections JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS seller_behavior JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS client_sentiment JSONB NOT NULL DEFAULT '[]'::jsonb;
 
