@@ -20,7 +20,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-
+  Pencil,
+  Trophy,
 } from "lucide-react";
 
 interface Stats {
@@ -44,13 +45,90 @@ interface Stats {
   }>;
 }
 
+interface GoalProgress {
+  calls_target: number;
+  quality_target: number;
+  improvement_target: number;
+  week_start: string;
+  calls_completed: number;
+  quality_average: number;
+  improvement_actual: number;
+  calls_progress: number;
+  quality_progress: number;
+  improvement_progress: number;
+}
+
+function GoalBar({ label, value, progress, color, detail }: { label: string; value: string; progress: number; color: string; detail: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end justify-between gap-3">
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-lg font-bold text-slate-900">{value}</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`${color} h-full rounded-full transition-all duration-700`} style={{ width: `${Math.min(progress, 100)}%` }} />
+      </div>
+      <div className="flex items-center justify-between text-xs text-slate-400">
+        <span>{detail}</span>
+        <span>{Math.round(progress)}%</span>
+      </div>
+    </div>
+  );
+}
+
 function DashboardPage() {
   const [stats, setStats] = React.useState<Stats | null>(null);
+  const [goals, setGoals] = React.useState<GoalProgress | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [editingGoals, setEditingGoals] = React.useState(false);
+  const [savingGoals, setSavingGoals] = React.useState(false);
+  const [goalDraft, setGoalDraft] = React.useState({ calls_target: 10, quality_target: 80, improvement_target: 5 });
 
   React.useEffect(() => {
-    api.get("/api/v1/dashboard/stats").then(setStats).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([
+      api.get("/api/v1/dashboard/stats"),
+      api.get("/api/v1/dashboard/goals").catch(() => ({
+        calls_target: 10,
+        quality_target: 80,
+        improvement_target: 5,
+        week_start: new Date().toISOString().slice(0, 10),
+        calls_completed: 0,
+        quality_average: 0,
+        improvement_actual: 0,
+        calls_progress: 0,
+        quality_progress: 0,
+        improvement_progress: 0,
+      })),
+    ]).then(([statsData, goalsData]) => {
+      setStats(statsData);
+      setGoals(goalsData);
+      setGoalDraft({
+        calls_target: goalsData.calls_target,
+        quality_target: goalsData.quality_target,
+        improvement_target: goalsData.improvement_target,
+      });
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  const saveGoals = async () => {
+    setSavingGoals(true);
+    try {
+      const saved = await api.put("/api/v1/dashboard/goals", goalDraft);
+      setGoals(saved);
+      setGoalDraft({
+        calls_target: saved.calls_target,
+        quality_target: saved.quality_target,
+        improvement_target: saved.improvement_target,
+      });
+      setEditingGoals(false);
+    } finally {
+      setSavingGoals(false);
+    }
+  };
+
+  const goalDate = goals?.week_start
+    ? new Date(`${goals.week_start}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" })
+    : "esta semana";
 
   const formatRelative = (dateStr: string) => {
     try {
@@ -105,7 +183,7 @@ function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -196,8 +274,70 @@ function DashboardPage() {
           </Card>
         </div>
 
+        {/* Personal goals */}
+        <Card className="overflow-hidden border-slate-200">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100">
+                  <Trophy className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle>Mi semana de crecimiento</CardTitle>
+                  <p className="text-sm text-slate-500 mt-1">Define el ritmo que quieres sostener y mira cómo avanzas.</p>
+                </div>
+              </div>
+            </div>
+            {!editingGoals && (
+              <Button variant="outline" size="sm" onClick={() => setEditingGoals(true)}>
+                <Pencil className="w-4 h-4 mr-1" /> Editar metas
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {editingGoals ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Llamadas analizadas</span>
+                  <input type="number" min="1" max="500" value={goalDraft.calls_target}
+                    onChange={(e) => setGoalDraft({ ...goalDraft, calls_target: Number(e.target.value) })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
+                  <span className="text-xs text-slate-400">Meta de volumen semanal</span>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Calidad promedio</span>
+                  <div className="relative"><input type="number" min="1" max="100" value={goalDraft.quality_target}
+                    onChange={(e) => setGoalDraft({ ...goalDraft, quality_target: Number(e.target.value) })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-12 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" /><span className="absolute right-3 top-2 text-sm text-slate-400">/100</span></div>
+                  <span className="text-xs text-slate-400">Puntuación objetivo de tus llamadas</span>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Mejora vs. semana anterior</span>
+                  <div className="relative"><input type="number" min="0" max="100" step="0.5" value={goalDraft.improvement_target}
+                    onChange={(e) => setGoalDraft({ ...goalDraft, improvement_target: Number(e.target.value) })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-8 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" /><span className="absolute right-3 top-2 text-sm text-slate-400">pts</span></div>
+                  <span className="text-xs text-slate-400">Cuánto quieres mejorar tu calidad</span>
+                </label>
+                <div className="md:col-span-3 flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button variant="ghost" size="sm" onClick={() => setEditingGoals(false)}>Cancelar</Button>
+                  <Button size="sm" onClick={saveGoals} disabled={savingGoals}>
+                    {savingGoals ? "Guardando..." : "Guardar metas"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <GoalBar label="Llamadas analizadas" value={`${goals?.calls_completed ?? 0}/${goals?.calls_target ?? 10}`} progress={goals?.calls_progress ?? 0} color="bg-emerald-500" detail={`${goals?.calls_completed ?? 0} completadas esta semana`} />
+                <GoalBar label="Calidad de conversación" value={goals?.quality_average ? `${goals.quality_average}/100` : "--"} progress={goals?.quality_progress ?? 0} color="bg-blue-500" detail={`Objetivo: ${goals?.quality_target ?? 80}/100`} />
+                <GoalBar label="Mejora personal" value={goals?.improvement_actual ? `+${goals.improvement_actual} pts` : "En progreso"} progress={goals?.improvement_progress ?? 0} color="bg-amber-500" detail={`Objetivo: +${goals?.improvement_target ?? 5} pts`} />
+              </div>
+            )}
+            {!editingGoals && <p className="text-xs text-slate-400 mt-5">Semana iniciada el {goalDate}. El avance se actualiza después de cada análisis.</p>}
+          </CardContent>
+        </Card>
+
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="hover:border-emerald-200 transition-colors cursor-pointer">
             <Link href="/calls">
               <CardContent className="p-6">

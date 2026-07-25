@@ -36,6 +36,25 @@ ALTER TABLE public.analyses
   ADD COLUMN IF NOT EXISTS seller_behavior JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS client_sentiment JSONB NOT NULL DEFAULT '[]'::jsonb;
 
+CREATE TABLE IF NOT EXISTS public.user_goals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL DEFAULT 'demo-user',
+  week_start DATE NOT NULL,
+  calls_target INTEGER NOT NULL DEFAULT 10 CHECK (calls_target > 0),
+  quality_target INTEGER NOT NULL DEFAULT 80 CHECK (quality_target BETWEEN 1 AND 100),
+  improvement_target NUMERIC NOT NULL DEFAULT 5 CHECK (improvement_target >= 0),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, week_start)
+);
+
+ALTER TABLE public.user_goals ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Demo user can manage goals" ON public.user_goals;
+CREATE POLICY "Demo user can manage goals"
+  ON public.user_goals FOR ALL
+  USING (user_id = 'demo-user')
+  WITH CHECK (user_id = 'demo-user');
+
 CREATE POLICY "Demo user can do everything on calls"
   ON public.calls FOR ALL
   USING (user_id = 'demo-user')

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -147,6 +147,22 @@ class DashboardStats(BaseModel):
     score_trend: float
     weekly_goal: dict
     recent_calls: list[CallResponse]
+
+
+class GoalSettings(BaseModel):
+    calls_target: int = Field(default=10, ge=1, le=500)
+    quality_target: int = Field(default=80, ge=1, le=100)
+    improvement_target: float = Field(default=5, ge=0, le=100)
+
+
+class GoalProgress(GoalSettings):
+    week_start: str
+    calls_completed: int
+    quality_average: float
+    improvement_actual: float
+    calls_progress: float
+    quality_progress: float
+    improvement_progress: float
 
 
 class CoachMessage(BaseModel):

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 from typing import Optional
 import uuid
@@ -12,6 +12,8 @@ from app.schemas.schemas import (
     CallResponse,
     AnalysisResponse,
     DashboardStats,
+    GoalProgress,
+    GoalSettings,
 )
 
 router = APIRouter()
@@ -257,6 +259,86 @@ async def get_dashboard_stats():
         },
         recent_calls=[CallResponse(**c) for c in all_calls[:5]],
     )
+
+
+def _week_start() -> datetime.date:
+    today = datetime.utcnow().date()
+    return today - timedelta(days=today.weekday())
+
+
+async def _get_goal_progress():
+    supabase = _get_supabase()
+    week_start = _week_start()
+    goal_result = (
+        supabase.table("user_goals")
+        .select("calls_target, quality_target, improvement_target")
+        .eq("user_id", "demo-user")
+        .eq("week_start", week_start.isoformat())
+        .limit(1)
+        .execute()
+    )
+    goal = (goal_result.data or [{}])[0]
+    settings = GoalSettings(
+        calls_target=goal.get("calls_target", 10),
+        quality_target=goal.get("quality_target", 80),
+        improvement_target=goal.get("improvement_target", 5),
+    )
+
+    calls_result = supabase.table("calls").select("id, status, created_at").execute()
+    calls = calls_result.data or []
+    current_ids = set()
+    previous_ids = set()
+    previous_week_start = week_start - timedelta(days=7)
+    for call in calls:
+        created = call.get("created_at", "")
+        try:
+            created_date = datetime.fromisoformat(created.replace("Z", "+00:00")).date()
+        except (AttributeError, ValueError):
+            continue
+        if call.get("status") == "completed" and week_start <= created_date:
+            current_ids.add(call["id"])
+        elif call.get("status") == "completed" and previous_week_start <= created_date < week_start:
+            previous_ids.add(call["id"])
+
+    analyses_result = supabase.table("analyses").select("call_id, overall_score").execute()
+    current_scores = [
+        a.get("overall_score") for a in (analyses_result.data or [])
+        if a.get("call_id") in current_ids and a.get("overall_score") is not None
+    ]
+    previous_scores = [
+        a.get("overall_score") for a in (analyses_result.data or [])
+        if a.get("call_id") in previous_ids and a.get("overall_score") is not None
+    ]
+    quality_average = round(sum(current_scores) / len(current_scores), 1) if current_scores else 0
+    previous_average = sum(previous_scores) / len(previous_scores) if previous_scores else 0
+    improvement_actual = round(quality_average - previous_average, 1) if previous_scores else 0
+
+    return GoalProgress(
+        **settings.model_dump(),
+        week_start=week_start.isoformat(),
+        calls_completed=len(current_ids),
+        quality_average=quality_average,
+        improvement_actual=improvement_actual,
+        calls_progress=round(min(len(current_ids) / settings.calls_target * 100, 100), 1),
+        quality_progress=round(min(quality_average / settings.quality_target * 100, 100), 1) if quality_average else 0,
+        improvement_progress=round(min(max(improvement_actual, 0) / settings.improvement_target * 100, 100), 1) if settings.improvement_target else 100,
+    )
+
+
+@router.get("/dashboard/goals", response_model=GoalProgress)
+async def get_dashboard_goals():
+    return await _get_goal_progress()
+
+
+@router.put("/dashboard/goals", response_model=GoalProgress)
+async def update_dashboard_goals(settings: GoalSettings):
+    supabase = _get_supabase()
+    supabase.table("user_goals").upsert({
+        "user_id": "demo-user",
+        "week_start": _week_start().isoformat(),
+        **settings.model_dump(),
+    }, on_conflict="user_id,week_start").execute()
+    return await _get_goal_progress()
 
 
 class TextAnalysisRequest(BaseModel):

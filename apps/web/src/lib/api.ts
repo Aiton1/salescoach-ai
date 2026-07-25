@@ -19,6 +19,16 @@ export const api = {
     return res.json();
   },
 
+  async put(path: string, body?: unknown) {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  },
+
   async upload(path: string, formData: FormData) {
     const res = await fetch(`${API_URL}${path}`, {
       method: "POST",
