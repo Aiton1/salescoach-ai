@@ -72,12 +72,29 @@ class TimelineEvent(BaseModel):
     timestamp_seconds: int
     description: Optional[str] = None
     is_highlight: bool = False
+    seller_action: Optional[str] = None
+    client_reaction: Optional[str] = None
+    score_impact: Optional[int] = 0
 
 
 class Objection(BaseModel):
     text: str
     response: str
     handled_well: bool
+    analysis: Optional[str] = None
+
+
+class SellerBehavior(BaseModel):
+    moment: str
+    behavior: str
+    impact: str
+    suggestion: str
+
+
+class ClientSentiment(BaseModel):
+    moment: str
+    sentiment: str
+    indicator: str
 
 
 class AnalysisResponse(BaseModel):
@@ -94,6 +111,8 @@ class AnalysisResponse(BaseModel):
     recommendations: list[str] = []
     next_steps: list[str] = []
     timeline: list[TimelineEvent] = []
+    seller_behavior: list[SellerBehavior] = []
+    client_sentiment: list[ClientSentiment] = []
     created_at: datetime
 
     class Config:
