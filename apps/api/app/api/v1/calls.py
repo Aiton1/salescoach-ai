@@ -42,27 +42,18 @@ async def _analyze(transcription: str) -> dict:
         f"Transcripcion:\n{transcription}"
     )
 
-    for attempt in range(4):
-        try:
-            response = await client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": "Eres experto en ventas B2B. JSON valido, sin explicaciones."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.3,
-                max_tokens=1500,
-                response_format={"type": "json_object"},
-            )
-            content = response.choices[0].message.content
-            return json.loads(content)
-        except Exception as e:
-            if "429" in str(e):
-                wait = 15 * (attempt + 1)
-                await asyncio.sleep(wait)
-                continue
-            raise
-    raise Exception("Rate limit exceeded. Intenta de nuevo mas tarde.")
+    response = await client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": "Eres experto en ventas B2B. JSON valido, sin explicaciones."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=1500,
+        response_format={"type": "json_object"},
+    )
+    content = response.choices[0].message.content
+    return json.loads(content)
 
 
 async def _process_call_with_text(call_id: str, transcription: str):
