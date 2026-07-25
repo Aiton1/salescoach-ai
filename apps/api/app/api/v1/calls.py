@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from datetime import datetime
 import uuid
 import json
+import asyncio
 import traceback
 
 from app.schemas.schemas import (
@@ -23,13 +24,19 @@ async def _transcribe(audio_bytes: bytes, filename: str) -> str:
     settings = get_settings()
 
     url = f"{settings.OPENAI_BASE_URL}/audio/transcriptions"
-    async with httpx.AsyncClient() as client:
-        files = {"file": (filename, audio_bytes, "audio/mpeg")}
-        data = {"model": settings.WHISPER_MODEL}
-        headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
-        response = await client.post(url, files=files, data=data, headers=headers, timeout=120.0)
-        response.raise_for_status()
-        return response.json()["text"]
+    for attempt in range(4):
+        async with httpx.AsyncClient() as client:
+            files = {"file": (filename, audio_bytes, "audio/mpeg")}
+            data = {"model": settings.WHISPER_MODEL}
+            headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
+            response = await client.post(url, files=files, data=data, headers=headers, timeout=120.0)
+            if response.status_code == 429:
+                wait = 10 * (attempt + 1)
+                await asyncio.sleep(wait)
+                continue
+            response.raise_for_status()
+            return response.json()["text"]
+    raise Exception("Rate limit exceeded after retries. Try again later.")
 
 
 async def _analyze(transcription: str) -> dict:
@@ -47,25 +54,33 @@ async def _analyze(transcription: str) -> dict:
     prompt += "Tipos de timeline: start, rapport, interest, objection, error, closing, end\nScores: 0-100\n\nTranscripcion:\n"
     prompt += transcription
 
-    response = await client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "Eres un experto en ventas B2B. Respondes SOLO con JSON valido, sin markdown ni explicaciones.",
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-        temperature=0.3,
-        max_tokens=2000,
-        response_format={"type": "json_object"},
-    )
-
-    content = response.choices[0].message.content
-    return json.loads(content)
+    for attempt in range(4):
+        try:
+            response = await client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Eres un experto en ventas B2B. Respondes SOLO con JSON valido, sin markdown ni explicaciones.",
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+                temperature=0.3,
+                max_tokens=2000,
+                response_format={"type": "json_object"},
+            )
+            content = response.choices[0].message.content
+            return json.loads(content)
+        except Exception as e:
+            if "429" in str(e):
+                wait = 15 * (attempt + 1)
+                await asyncio.sleep(wait)
+                continue
+            raise
+    raise Exception("Rate limit exceeded after retries. Try again later.")
 
 
 async def _process_call(call_id: str, audio_bytes: bytes, filename: str):
