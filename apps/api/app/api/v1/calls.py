@@ -341,12 +341,27 @@ async def get_call(call_id: str):
     return CallResponse(**calls[0])
 
 
-@router.get("/analyses/{call_id}", response_model=AnalysisResponse)
+@router.get("/analyses/{call_id}")
 async def get_analysis(call_id: str):
     supabase = _get_supabase()
     result = supabase.table("analyses").select("*").eq("call_id", call_id).execute()
     rows = result.data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    rows[0]["corrections"] = _normalize_corrections(rows[0].get("corrections", []))
-    return AnalysisResponse(**rows[0])
+
+    row = rows[0]
+    for field in (
+        "strengths",
+        "errors",
+        "objections",
+        "techniques_used",
+        "recommendations",
+        "next_steps",
+        "timeline",
+        "seller_behavior",
+        "client_sentiment",
+    ):
+        if not isinstance(row.get(field), list):
+            row[field] = []
+    row["corrections"] = _normalize_corrections(row.get("corrections", []))
+    return row
