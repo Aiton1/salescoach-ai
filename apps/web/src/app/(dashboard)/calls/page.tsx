@@ -19,7 +19,9 @@ import {
   FileAudio,
   Clock,
   Trash2,
+  Eye,
 } from "lucide-react";
+import Link from "next/link";
 
 interface Call {
   id: string;
@@ -111,7 +113,11 @@ function CallsPage() {
       setClientName("");
       setUploadProgress(100);
 
-      setTimeout(() => setUploadProgress(0), 1000);
+      if (newCall.status === "completed") {
+        window.location.href = `/analysis/${newCall.id}`;
+      } else {
+        setTimeout(() => setUploadProgress(0), 1000);
+      }
     } catch (err: any) {
       if (err.message === "Failed to fetch") {
         setError("El backend no está disponible. Verifica la configuración.");
@@ -290,6 +296,14 @@ function CallsPage() {
                         {call.client_name || "Sin cliente"} · {new Date(call.created_at).toLocaleDateString("es-ES")}
                       </p>
                     </div>
+                    {call.status === "completed" && (
+                      <Link href={`/analysis/${call.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver analisis
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>
