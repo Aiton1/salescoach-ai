@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # Groq (compatible con OpenAI API)
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.groq.com/openai/v1"
-    OPENAI_MODEL: str = "llama-3.3-70b-versatile"
+    OPENAI_MODEL: str = "llama-3.1-8b-instant"
     WHISPER_MODEL: str = "whisper-large-v3"
 
     # Database
