@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS analyses (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Keep an existing installation compatible with the current API too.
+ALTER TABLE calls
+  ADD COLUMN IF NOT EXISTS audio_path TEXT,
+  ADD COLUMN IF NOT EXISTS progress INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS progress_text TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE analyses
+  ADD COLUMN IF NOT EXISTS seller_behavior JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS client_sentiment JSONB NOT NULL DEFAULT '[]'::jsonb;
+
 -- ============================================================
 -- 3. INDEXES
 -- ============================================================
