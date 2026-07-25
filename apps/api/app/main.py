@@ -1,7 +1,52 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import FastAPI
+from starlette.types import ASGIApp, Receive, Scope, Send
 from app.api.v1 import calls, coach
+
+
+class CORSMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request_headers = dict(scope.get("headers", []))
+        origin = request_headers.get(b"origin", b"").decode() or "*"
+        method = scope.get("method", "GET")
+
+        if method == "OPTIONS":
+            response_headers = [
+                (b"access-control-allow-origin", origin.encode()),
+                (b"access-control-allow-credentials", b"true"),
+                (b"access-control-allow-methods", b"GET, POST, PUT, DELETE, OPTIONS, PATCH"),
+                (b"access-control-allow-headers", b"Content-Type, Authorization, Accept"),
+                (b"access-control-max-age", b"600"),
+                (b"content-length", b"0"),
+            ]
+
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": response_headers,
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b"",
+            })
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.append((b"access-control-allow-origin", origin.encode()))
+                headers.append((b"access-control-allow-credentials", b"true"))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
 
 app = FastAPI(
     title="SalesCoach AI API",
@@ -9,30 +54,7 @@ app = FastAPI(
     description="AI-Powered Sales Coach API",
 )
 
-
-class ForceOptionsCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin", "*")
-
-        if request.method == "OPTIONS":
-            return Response(
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
-                    "Access-Control-Max-Age": "600",
-                },
-            )
-
-        response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        return response
-
-
-app.add_middleware(ForceOptionsCORSMiddleware)
+app.add_middleware(CORSMiddleware)
 
 app.include_router(calls.router, prefix="/api/v1", tags=["calls"])
 app.include_router(coach.router, prefix="/api/v1/coach", tags=["coach"])
