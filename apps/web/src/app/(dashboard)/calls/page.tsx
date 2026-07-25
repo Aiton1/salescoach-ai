@@ -23,6 +23,7 @@ import {
   Brain,
   FileText,
   Sparkles,
+  Type,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,7 +40,7 @@ interface Call {
 
 const processingStages = [
   { key: "uploading", label: "Subiendo audio", icon: Upload, color: "text-blue-500" },
-  { key: "transcribing", label: "Transcribiendo con Whisper", icon: Mic, color: "text-purple-500" },
+  { key: "transcribing", label: "Transcribiendo", icon: Mic, color: "text-purple-500" },
   { key: "analyzing", label: "Analizando con IA", icon: Brain, color: "text-emerald-500" },
 ];
 
@@ -47,13 +48,14 @@ function CallsPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [calls, setCalls] = React.useState<Call[]>([]);
   const [uploading, setUploading] = React.useState(false);
-  const [uploadProgress, setUploadProgress] = React.useState(0);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [dragActive, setDragActive] = React.useState(false);
   const [error, setError] = React.useState("");
   const [clientName, setClientName] = React.useState("");
   const [processingCallId, setProcessingCallId] = React.useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = React.useState<Call | null>(null);
+  const [mode, setMode] = React.useState<"audio" | "text">("audio");
+  const [textInput, setTextInput] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -144,11 +146,10 @@ function CallsPage() {
     poll();
   };
 
-  const handleUpload = async () => {
+  const handleUploadAudio = async () => {
     if (!selectedFile) return;
 
     setUploading(true);
-    setUploadProgress(0);
     setError("");
 
     try {
@@ -161,12 +162,41 @@ function CallsPage() {
       setSelectedFile(null);
       setClientName("");
       setUploading(false);
-      setUploadProgress(0);
 
       setProcessingCallId(newCall.id);
       setProcessingStatus(newCall);
       loadCalls();
+      pollCallStatus(newCall.id);
+    } catch (err: any) {
+      if (err.message === "Failed to fetch") {
+        setError("El backend no esta disponible. Verifica la configuracion.");
+      } else {
+        setError(err.message);
+      }
+      setUploading(false);
+    }
+  };
 
+  const handleAnalyzeText = async () => {
+    if (!textInput.trim()) return;
+
+    setUploading(true);
+    setError("");
+
+    try {
+      const newCall = await api.post("/api/v1/calls/analyze-text", {
+        transcription: textInput.trim(),
+        client_name: clientName || "Sin cliente",
+        title: `Llamada - ${new Date().toLocaleDateString("es-ES")}`,
+      });
+
+      setTextInput("");
+      setClientName("");
+      setUploading(false);
+
+      setProcessingCallId(newCall.id);
+      setProcessingStatus(newCall);
+      loadCalls();
       pollCallStatus(newCall.id);
     } catch (err: any) {
       if (err.message === "Failed to fetch") {
@@ -180,9 +210,9 @@ function CallsPage() {
 
   const cancelUpload = () => {
     setSelectedFile(null);
+    setTextInput("");
     setClientName("");
     setError("");
-    setUploadProgress(0);
   };
 
   const filteredCalls = calls.filter((call) =>
@@ -240,7 +270,6 @@ function CallsPage() {
                   </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="space-y-2">
                   <div className="h-3 bg-white rounded-full overflow-hidden border border-emerald-100">
                     <div
@@ -258,7 +287,6 @@ function CallsPage() {
                   </div>
                 </div>
 
-                {/* Stages */}
                 <div className="flex items-center gap-2">
                   {processingStages.map((stage, i) => {
                     const isCurrentOrPast =
@@ -305,98 +333,166 @@ function CallsPage() {
           </Card>
         )}
 
-        {/* Upload Area */}
+        {/* Input Area */}
         {!processingCallId && (
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => !selectedFile && fileInputRef.current?.click()}
-            className={cn(
-              "border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200",
-              dragActive
-                ? "border-emerald-400 bg-emerald-50"
-                : selectedFile
-                ? "border-emerald-300 bg-emerald-50/50"
-                : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 cursor-pointer"
-            )}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".mp3,.wav,.m4a,.ogg,audio/*"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-            />
+          <Card>
+            <CardContent className="p-6">
+              {/* Mode Tabs */}
+              <div className="flex items-center gap-2 mb-6">
+                <button
+                  onClick={() => setMode("audio")}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    mode === "audio"
+                      ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                      : "text-slate-500 hover:bg-slate-100"
+                  )}
+                >
+                  <FileAudio className="w-4 h-4" />
+                  Subir audio
+                </button>
+                <button
+                  onClick={() => setMode("text")}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    mode === "text"
+                      ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                      : "text-slate-500 hover:bg-slate-100"
+                  )}
+                >
+                  <Type className="w-4 h-4" />
+                  Pegar transcripcion
+                </button>
+              </div>
 
-            {selectedFile ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-4">
-                  <FileAudio className="w-12 h-12 text-emerald-500" />
-                  <div className="text-left">
-                    <p className="font-medium text-slate-900">{selectedFile.name}</p>
-                    <p className="text-sm text-slate-500">
-                      {(selectedFile.size / 1024 / 1024).toFixed(1)} MB
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); cancelUpload(); }}
-                    className="p-2 hover:bg-slate-100 rounded-lg"
-                  >
-                    <X className="w-5 h-5 text-slate-400" />
-                  </button>
+              {mode === "audio" ? (
+                /* Audio Upload */
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => !selectedFile && fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200",
+                    dragActive
+                      ? "border-emerald-400 bg-emerald-50"
+                      : selectedFile
+                      ? "border-emerald-300 bg-emerald-50/50"
+                      : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 cursor-pointer"
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".mp3,.wav,.m4a,.ogg,audio/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                  />
+
+                  {selectedFile ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center gap-4">
+                        <FileAudio className="w-12 h-12 text-emerald-500" />
+                        <div className="text-left">
+                          <p className="font-medium text-slate-900">{selectedFile.name}</p>
+                          <p className="text-sm text-slate-500">
+                            {(selectedFile.size / 1024 / 1024).toFixed(1)} MB
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); cancelUpload(); }}
+                          className="p-2 hover:bg-slate-100 rounded-lg"
+                        >
+                          <X className="w-5 h-5 text-slate-400" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100">
+                        <Upload className="w-8 h-8 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          Arrastra tu archivo de audio aqui
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1">
+                          o haz clic para seleccionar · MP3, WAV, M4A · Maximo 100MB
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                /* Text Input */
+                <div className="space-y-3">
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="Pega aqui la transcripcion de la llamada de ventas...&#10;&#10;Ejemplo: 'Buenos dias, le llamo de XYZ Corp. Nosotros ofrecemos soluciones de software para empresas...' "
+                    className="w-full h-48 px-4 py-3 text-sm text-slate-700 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400"
+                  />
+                  <p className="text-xs text-slate-400">
+                    {textInput.length > 0 && `${textInput.length} caracteres`}
+                    {textInput.length > 4000 && " (se truncara a 4000)"}
+                  </p>
+                </div>
+              )}
 
-                <div className="max-w-md mx-auto space-y-3">
+              {/* Client Name + Actions */}
+              <div className="flex items-end gap-3 mt-4">
+                <div className="flex-1 max-w-xs">
                   <Input
                     placeholder="Nombre del cliente (opcional)"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
                   />
+                </div>
 
-                  {error && <p className="text-sm text-red-600">{error}</p>}
+                {error && <p className="flex-1 text-sm text-red-600">{error}</p>}
 
-                  <div className="flex gap-2 justify-center">
+                <div className="flex gap-2">
+                  {mode === "audio" && selectedFile && (
                     <Button
-                      onClick={(e) => { e.stopPropagation(); handleUpload(); }}
+                      onClick={handleUploadAudio}
                       disabled={uploading}
                       size="lg"
                     >
                       {uploading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Subiendo...</>
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Procesando...</>
                       ) : (
                         <><Upload className="w-4 h-4 mr-2" />Subir y analizar</>
                       )}
                     </Button>
+                  )}
+                  {mode === "text" && textInput.trim() && (
+                    <Button
+                      onClick={handleAnalyzeText}
+                      disabled={uploading}
+                      size="lg"
+                    >
+                      {uploading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analizando...</>
+                      ) : (
+                        <><Brain className="w-4 h-4 mr-2" />Analizar llamada</>
+                      )}
+                    </Button>
+                  )}
+                  {(selectedFile || textInput) && (
                     <Button
                       variant="outline"
-                      onClick={(e) => { e.stopPropagation(); cancelUpload(); }}
+                      onClick={cancelUpload}
                       disabled={uploading}
                       size="lg"
                     >
                       Cancelar
                     </Button>
-                  </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-emerald-100">
-                  <Upload className="w-10 h-10 text-emerald-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Arrastra tu archivo de audio aqui
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1">
-                    o haz clic para seleccionar · MP3, WAV, M4A · Maximo 100MB
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Filters */}
@@ -468,7 +564,7 @@ function CallsPage() {
                 <p className="text-sm text-slate-500 max-w-md">
                   {searchQuery
                     ? "Intenta con otro termino de busqueda"
-                    : "Sube tu primer audio y la IA lo analizara automaticamente."}
+                    : "Sube un audio o pega la transcripcion para que la IA la analice."}
                 </p>
               </div>
             </CardContent>
