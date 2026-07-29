@@ -73,7 +73,7 @@ async def _analyze(transcription: str) -> dict:
         '"techniques_used":["Tecnicas de ventas identificadas (ej: SPIN selling, manejo de objeciones, creacion de urgencia, anchoring). Explicar donde se aplicaron."],'
         '"recommendations":["Recomendaciones accionables y especificas para mejorar."],'
         '"next_steps":["Pasos de seguimiento concretos que el vendedor deberia tomar."],'
-        '"timeline":[{"id":"1","type":"start|rapport|discovery|presentation|objection|negotiation|closing|positive_moment|error|end","label":"Nombre del momento","timestamp_seconds":0,"description":"Que paso en detalle","is_highlight":true_o_false,"seller_action":"Que hizo el vendedor","client_reaction":"Como reacciono el cliente","score_impact":+5_o_-3_o_0}],'
+         '"timeline":[{"id":"1","type":"start|rapport|discovery|presentation|objection|negotiation|closing|positive_moment|error|end","label":"Nombre del momento","timestamp_seconds":0,"description":"Que paso en detalle","is_highlight":true_o_false,"seller_action":"Que hizo el vendedor","client_reaction":"Como reacciono el cliente","score_impact":5}],'
         '"seller_behavior":[{"moment":"En que momento clave","behavior":"Que hizo el vendedor","impact":"Impacto en la llamada","suggestion":"Sugerencia de mejora"}],'
         '"client_sentiment":[{"moment":"Timestamp o fase","sentiment":"positive|neutral|negative|interested|resistant|excited","indicator":"Por que se determino ese sentimiento"}]}\n\n'
     )
@@ -81,6 +81,8 @@ async def _analyze(transcription: str) -> dict:
         "Criterios de evaluacion: Rapport (10 pts), Descubrimiento de necesidades (20 pts), "
         "Presentacion de solucion (20 pts), Manejo de objeciones (20 pts), Cierre (20 pts), "
         "Seguimiento (10 pts). Justifica el overall_score con estos criterios.\n\n"
+        "REGLAS ESTRICTAS DE JSON: todos los id deben ser strings, todos los score_impact deben ser enteros sin signo + (usa 5, -3 o 0), "
+        "true y false deben ser booleanos, y no uses comentarios ni markdown. "
         "Para cada correction usa evidencia literal de la transcripcion cuando exista. "
         "No inventes frases ni momentos. La ideal_response debe sonar natural, ser breve y "
         "mostrar exactamente como responderia un vendedor excelente en ese contexto. "
@@ -98,15 +100,19 @@ async def _analyze(transcription: str) -> dict:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
-                max_tokens=4000,
+                max_tokens=5000,
                 response_format={"type": "json_object"},
             )
             content = response.choices[0].message.content
             return json.loads(content)
         except Exception as e:
-            if "429" in str(e):
+            error_text = str(e)
+            if "429" in error_text:
                 wait = 15 * (attempt + 1)
                 await asyncio.sleep(wait)
+                continue
+            if "json_validate_failed" in error_text or "Failed to generate JSON" in error_text:
+                await asyncio.sleep(1)
                 continue
             raise
     raise Exception("Rate limit exceeded. Intenta de nuevo mas tarde.")
