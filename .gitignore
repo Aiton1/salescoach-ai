@@ -44,3 +44,5 @@ supabase/.temp/
 # Misc
 coverage/
 .nyc_output/
+
+.vercel
