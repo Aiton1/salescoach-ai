@@ -17,6 +17,7 @@ from app.schemas.schemas import (
 )
 
 router = APIRouter()
+MAX_ANALYSIS_CHARS = 3500
 
 
 def _normalize_corrections(value) -> list[dict]:
@@ -86,7 +87,7 @@ async def _analyze(transcription: str) -> dict:
         "Para cada correction usa evidencia literal de la transcripcion cuando exista. "
         "No inventes frases ni momentos. La ideal_response debe sonar natural, ser breve y "
         "mostrar exactamente como responderia un vendedor excelente en ese contexto. "
-        "Incluye entre 3 y 6 corrections para los errores mas importantes, priorizadas por impacto.\n\n"
+        "Incluye entre 3 y 4 corrections para los errores mas importantes, priorizadas por impacto. Mantén cada respuesta breve y concreta.\n\n"
         "Transcripcion:\n" + transcription
     )
     prompt = p1 + p2
@@ -100,7 +101,7 @@ async def _analyze(transcription: str) -> dict:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
-                max_tokens=5000,
+                max_tokens=3000,
                 response_format={"type": "json_object"},
             )
             content = response.choices[0].message.content
@@ -142,6 +143,8 @@ def _insert_analysis(call_id: str, transcription: str, analysis_data: dict):
 
 async def _process_call_with_text(call_id: str, transcription: str):
     try:
+        if len(transcription) > MAX_ANALYSIS_CHARS:
+            transcription = transcription[:MAX_ANALYSIS_CHARS] + "\n[Truncado]"
         _update_call_status(call_id, status="analyzing", progress=40, progress_text="Analizando conversacion con IA...")
 
         analysis_data = await _analyze(transcription)
@@ -200,8 +203,8 @@ async def _process_call_with_audio(call_id: str, audio_bytes: bytes, filename: s
             response.raise_for_status()
             transcription = response.json()["text"]
 
-        if len(transcription) > 4000:
-            transcription = transcription[:4000] + "\n[Truncado]"
+        if len(transcription) > MAX_ANALYSIS_CHARS:
+            transcription = transcription[:MAX_ANALYSIS_CHARS] + "\n[Truncado]"
 
         _update_call_status(call_id, status="analyzing", progress=50, progress_text="Analizando conversacion con IA...")
 
