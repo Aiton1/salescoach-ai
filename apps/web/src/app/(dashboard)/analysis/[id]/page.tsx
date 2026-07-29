@@ -103,7 +103,22 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
           api.get(`/api/v1/analyses/${resolvedParams.id}`),
           api.get(`/api/v1/calls/${resolvedParams.id}`),
         ]);
-        if (!cancelled) { setAnalysis(analysisData); setCall(callData); }
+        if (!cancelled) {
+          setAnalysis({
+            ...analysisData,
+            strengths: analysisData.strengths ?? [],
+            errors: analysisData.errors ?? [],
+            objections: analysisData.objections ?? [],
+            techniques_used: analysisData.techniques_used ?? [],
+            recommendations: analysisData.recommendations ?? [],
+            corrections: analysisData.corrections ?? [],
+            next_steps: analysisData.next_steps ?? [],
+            timeline: analysisData.timeline ?? [],
+            seller_behavior: analysisData.seller_behavior ?? [],
+            client_sentiment: analysisData.client_sentiment ?? [],
+          });
+          setCall(callData);
+        }
       } catch {
         if (!cancelled) setError("No se pudo cargar el analisis.");
       } finally {
@@ -431,7 +446,7 @@ function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
                         {event.description && <p className="text-sm text-slate-500 mt-1">{event.description}</p>}
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <span className="text-sm font-mono text-slate-400">{formatDuration(event.timestamp_seconds)}</span>
+                        <span className="text-sm font-mono text-slate-400">{formatDuration(event.timestamp_seconds ?? 0)}</span>
                         {event.timestamp_seconds > 0 && <Volume2 className="w-3 h-3 text-slate-300 ml-1 inline" />}
                       </div>
                     </button>
